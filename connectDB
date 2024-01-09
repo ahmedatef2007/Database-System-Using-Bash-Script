@@ -1,0 +1,20 @@
+
+	if [[ `ls | wc -l` -eq 0 ]]; then
+		echo "There Are No Databases Created"
+		
+	else	
+		echo Available Databases:
+		ls -F | grep / | sed 's|/$||'
+		read -p "Enter Name Of Database To Connect or ESC: " dbName
+		if [[ $dbName == $'\e' ]]; then
+			break
+		fi
+		if [[ -d $dbName ]]; then
+			cd $dbName
+			. ../../connectDBMenu
+			
+		else
+			echo There Is No Database With This Name, Database Name Must Be Exactly!
+		fi
+	fi
+

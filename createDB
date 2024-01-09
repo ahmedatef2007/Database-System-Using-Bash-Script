@@ -1,0 +1,43 @@
+export LC_COLLATE=C
+shopt -s extglob
+while true
+do
+	read -p "Enter Database Name Or ESC: " dbName
+	if [[ $dbName == $'\e' ]]; then
+		break
+	else
+		case $dbName in
+		[0-9]*)
+			echo Database Name Cannot Start With Numbers.
+			continue
+		;;
+		*[[:space:]]*)
+				dbName=$(echo $dbName | sed 's/ /_/g')
+				if [[ -d $dbName ]]; then
+					echo Database Already Exist.
+					continue
+				else
+					mkdir $dbName
+					echo $dbName Created Successfully.
+					break
+				fi	
+		;;
+		*[!a-zA-Z0-9_]*)
+			echo Database Name Cannot Have Special Characters.
+		;;
+		+([a-zA-Z_]*))
+			if [[ -d $dbName ]]; then
+					echo Database Already Exist.
+					continue
+				else
+					mkdir $dbName
+					echo $dbName Created Successfully.
+					break
+				fi	
+		;;
+		*)
+			echo Invalid Name
+		;;
+		esac
+	fi
+done

@@ -1,0 +1,36 @@
+clear
+echo ------------------------Connected To $dbName Database------------------------
+PS3="Choose Option [1-8]: "
+select input in "Create Table" "Drop Table" "Insert Table" "Select From Table" "Delete From Table" "Update Table" "List Tables" "Disconnect"
+do
+	case $REPLY in
+		1)
+			. ../../createTable
+		;;
+		2)
+			
+		;;
+		3)
+			
+		;;
+		4)
+			
+		;;
+		5)
+			
+		;;
+		6)
+			
+		;;
+		7)
+			
+		;;
+		8)
+			cd ../../
+			. ./main
+		;;
+		*)
+			echo Wrong input
+		;;
+	esac
+done

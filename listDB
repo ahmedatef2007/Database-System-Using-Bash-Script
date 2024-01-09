@@ -1,0 +1,6 @@
+if [[ `ls | wc -l` -eq 0 ]]; then
+	echo "There Are No Databases Created"
+else
+	echo Available Databases:
+	ls -F | grep / | sed 's|/$||'
+fi

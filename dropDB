@@ -1,0 +1,28 @@
+while true
+do
+	if [[ `ls | wc -l` -eq 0 ]]; then
+		echo "There Are No Databases Created"
+		break
+	else	
+		echo Available Databases:
+		ls -F | grep / | sed 's|/$||'
+		read -p "Enter Name Of Database To Drop or ESC: " dbName
+		if [[ $dbName == $'\e' ]]; then
+			break
+		fi
+		if [[ -d $dbName ]]; then
+			read -p "Are You Sure You Want to Drop Database y/n: " conf
+			if [[ $conf == y || $conf == Y ]]; then
+				rm -r $dbName		
+				echo $dbName Dropped Successfully
+				break
+			elif [[ $conf == n || $conf == N ]]; then
+				continue
+			else
+				echo Invalid Choice
+			fi
+		else
+			echo There Is No Database With This Name, Database Name Must Be Exactly!
+		fi
+	fi
+done

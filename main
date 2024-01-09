@@ -1,0 +1,33 @@
+clear
+
+if [ -d ./DB ]; then
+	cd ./DB
+else
+	mkdir ./DB
+	cd ./DB
+fi
+PS3="Choose Option [1-5]: "
+echo ------------------------Welcome `whoami`------------------------
+select input in "Create Database" "List Database" "Connect Database" "Drop Database" "Exit"
+do
+	case $REPLY in
+		1)
+			. ../createDB
+		;;
+		2)
+			. ../listDB
+		;;
+		3)
+			. ../connectDB
+		;;
+		4)
+			. ../dropDB
+		;;
+		5)
+			exit
+		;;
+		*)
+			echo Wrong input
+		;;
+	esac
+done

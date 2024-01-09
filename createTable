@@ -1,0 +1,131 @@
+export LC_COLLATE=C
+shopt -s extglob
+while true
+do
+	read -p "Enter Name Of Table Or ESC: " tName
+	if [[ $tName == $'\e' ]]; then
+		. ../../connectDBMenu
+	else
+		case $tName in
+		[0-9]*)
+			echo Table Name Cannot Start With Numbers.
+			continue
+		;;
+		*[[:space:]]*)
+				tName=$(echo $tName | sed 's/ /_/g')
+				if [[ -f $tName ]]; then
+					echo $tName Already Exist.
+					continue
+				else
+					touch $tName
+					touch $tName"_meta"
+					break
+				fi	
+		;;
+		*[!a-zA-Z0-9_]*)
+			echo Table Name Cannot Have Special Characters.
+		;;
+		+([a-zA-Z_]*))
+			if [[ -f $tName ]]; then
+					echo $tName Already Exist.
+					continue
+				else
+					touch $tName
+					touch $tName"_meta"
+					break
+				fi	
+		;;
+		*)
+			echo Invalid Name
+		;;
+		esac
+	fi
+done
+
+while true
+do
+	read -p "Enter Number Of Columns: " numColm
+	if [[ $numColm =~ ^[0-9]+$ && $numColm -gt 0 ]]; then
+		break
+	else
+		echo Please Enter Numbers Only.
+	fi
+done
+row=()
+row2=()
+PS3="Choose Option [1-2]: "
+echo First Column Is Primary Key
+for((i=1; i <= $numColm; i++))
+do
+	
+	while true
+	do
+		flag=0
+		read -p "Enter Name Of Column Number $i: " cName
+		case $cName in
+			[0-9]*)
+				echo Column Name Cannot Start With Numbers.
+				continue
+			;;
+			*[[:space:]]*)
+					cName=$(echo $dbName | sed 's/ /_/g')
+					for val in "${row[@]}"; do
+					    if [[ "$cName" == "$val" ]]; then
+						((flag++))
+					    fi
+					done
+					if [[ $flag -gt 0 ]]; then
+						echo You Cannot Enter The Same Column Name Twice.
+						continue
+					else
+						row+=("$cName")
+						break
+					fi
+			;;
+			*[!a-zA-Z0-9_]*)
+				echo Column Name Cannot Have Special Characters.
+			;;
+			+([a-zA-Z_]*))
+				for val in "${row[@]}"; do
+					if [[ $cName == $val ]]; then
+						((flag++))
+					fi
+				done
+				if [[ $flag -gt 0 ]]; then
+					echo You Cannot Enter The Same Column Name Twice.
+					continue
+				else
+					row+=("$cName")
+					break
+				fi
+			;;
+			*)
+				echo Invalid Name
+			;;
+		esac
+	done
+	#row+=$cName:
+	echo "Choose The Type Of Column: "
+	select input in "Int" "String"
+		do
+			case $REPLY in
+				1)
+					row2+=(Int)
+					break
+				;;
+				2)
+					row2+=(String)
+					break
+				;;
+				*)
+					echo Wrong input
+				;;
+			esac
+		done
+done
+echo ${row[@]} >> $tName"_meta"
+echo ${row2[@]} >> $tName"_meta"
+echo "$tName Created Successfully"
+sleep 2
+. ../../connectDBMenu
+
