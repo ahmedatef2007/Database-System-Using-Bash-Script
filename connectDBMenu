@@ -8,7 +8,7 @@ do
 			. ../../createTable
 		;;
 		2)
-			
+			. ../../dropTable
 		;;
 		3)
 			
@@ -23,7 +23,7 @@ do
 			
 		;;
 		7)
-			
+			. ../../listTables
 		;;
 		8)
 			cd ../../

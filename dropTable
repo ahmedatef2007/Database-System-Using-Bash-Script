@@ -1,0 +1,28 @@
+while true
+do
+	if [[ `ls -p | grep -v / | grep -v '_meta' | wc -l` -eq 0 ]]; then
+		echo "There Are No Tables Created"
+		break
+	else	
+		echo Available Tables:
+		ls -p | grep -v / | grep -v '_meta'
+		read -p "Enter Name Of Table To Drop or ESC: " tName
+		if [[ $tName == $'\e' ]]; then
+			break
+		fi
+		if [[ -f $tName ]]; then
+			read -p "Are You Sure You Want to Drop Database y/n: " conf
+			if [[ $conf == y || $conf == Y ]]; then
+				rm $tName $tName"_meta"
+				echo $tName Dropped Successfully
+				break
+			elif [[ $conf == n || $conf == N ]]; then
+				continue
+			else
+				echo Invalid Choice
+			fi
+		else
+			echo There Is No Table With This Name, Table Name Must Be Exactly!
+		fi
+	fi
+done

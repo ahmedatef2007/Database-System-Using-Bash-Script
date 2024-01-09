@@ -123,8 +123,16 @@ do
 			esac
 		done
 done
-echo ${row[@]} >> $tName"_meta"
-echo ${row2[@]} >> $tName"_meta"
+name=""
+type=""
+for val in "${row[@]}"; do
+	name+=$val:
+done
+for val in "${row2[@]}"; do
+	type+=$val:
+done
+echo ${name::-1} >> $tName"_meta"
+echo ${type::-1} >> $tName"_meta"
 echo "$tName Created Successfully"
 sleep 2
 . ../../connectDBMenu
