@@ -1,4 +1,4 @@
-
+#!/bin/bash
 	if [[ `ls | wc -l` -eq 0 ]]; then
 		echo "There Are No Databases Created"
 		

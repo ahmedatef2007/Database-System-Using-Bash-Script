@@ -1,3 +1,4 @@
+#!/bin/bash
 if [[ `ls -p | grep -v / | grep -v '_meta' | wc -l` -eq 0 ]]; then
 	echo "There Are No Tables Created"
 else

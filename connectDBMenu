@@ -1,3 +1,4 @@
+#!/bin/bash
 clear
 echo ------------------------Connected To $dbName Database------------------------
 PS3="Choose Option [1-8]: "
