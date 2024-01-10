@@ -11,6 +11,9 @@ do
 			echo Database Name Cannot Start With Numbers.
 			continue
 		;;
+		*[!a-zA-Z0-9_]*)
+			echo Database Name Cannot Have Special Characters.
+		;;
 		*[[:space:]]*)
 				dbName=$(echo $dbName | sed 's/ /_/g')
 				if [[ -d $dbName ]]; then
@@ -21,9 +24,6 @@ do
 					echo $dbName Created Successfully.
 					break
 				fi	
-		;;
-		*[!a-zA-Z0-9_]*)
-			echo Database Name Cannot Have Special Characters.
 		;;
 		+([a-zA-Z_]*))
 			if [[ -d $dbName ]]; then

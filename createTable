@@ -11,6 +11,9 @@ do
 			echo Table Name Cannot Start With Numbers.
 			continue
 		;;
+		*[!a-zA-Z0-9_]*)
+			echo Table Name Cannot Have Special Characters.
+		;;
 		*[[:space:]]*)
 				tName=$(echo $tName | sed 's/ /_/g')
 				if [[ -f $tName ]]; then
@@ -21,9 +24,6 @@ do
 					touch $tName"_meta"
 					break
 				fi	
-		;;
-		*[!a-zA-Z0-9_]*)
-			echo Table Name Cannot Have Special Characters.
 		;;
 		+([a-zA-Z_]*))
 			if [[ -f $tName ]]; then
@@ -67,8 +67,11 @@ do
 				echo Column Name Cannot Start With Numbers.
 				continue
 			;;
+			*[!a-zA-Z0-9_]*)
+				echo Column Name Cannot Have Special Characters.
+			;;
 			*[[:space:]]*)
-					cName=$(echo $dbName | sed 's/ /_/g')
+					cName=$(echo $cName | sed 's/ /_/g')
 					for val in "${row[@]}"; do
 					    if [[ "$cName" == "$val" ]]; then
 						((flag++))
@@ -81,9 +84,6 @@ do
 						row+=("$cName")
 						break
 					fi
-			;;
-			*[!a-zA-Z0-9_]*)
-				echo Column Name Cannot Have Special Characters.
 			;;
 			+([a-zA-Z_]*))
 				for val in "${row[@]}"; do

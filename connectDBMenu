@@ -11,7 +11,7 @@ do
 			. ../../dropTable
 		;;
 		3)
-			
+			. ../../insertTable
 		;;
 		4)
 			
