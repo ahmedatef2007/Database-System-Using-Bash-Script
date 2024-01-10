@@ -2,6 +2,7 @@
 
 export LC_COLLATE=C
 shopt -s extglob
+
 while true
 do
 	read -p "Enter Name Of Table Or ESC: " tName
@@ -53,13 +54,14 @@ do
 		echo Please Enter Numbers Only.
 	fi
 done
-row=()
-row2=()
+
+columnNames=()
+dataTypes=()
 PS3="Choose Option [1-2]: "
 echo First Column Is Primary Key
+
 for((i=1; i <= $numColm; i++))
 do
-	
 	while true
 	do
 		flag=0
@@ -74,7 +76,7 @@ do
 			;;
 			*[[:space:]]*)
 					cName=$(echo $cName | sed 's/ /_/g')
-					for val in "${row[@]}"; do
+					for val in "${columnNames[@]}"; do
 					    if [[ "$cName" == "$val" ]]; then
 						((flag++))
 					    fi
@@ -83,12 +85,12 @@ do
 						echo You Cannot Enter The Same Column Name Twice.
 						continue
 					else
-						row+=("$cName")
+						columnNames+=("$cName")
 						break
 					fi
 			;;
 			+([a-zA-Z_]*))
-				for val in "${row[@]}"; do
+				for val in "${columnNames[@]}"; do
 					if [[ $cName == $val ]]; then
 						((flag++))
 					fi
@@ -97,7 +99,7 @@ do
 					echo You Cannot Enter The Same Column Name Twice.
 					continue
 				else
-					row+=("$cName")
+					columnNames+=("$cName")
 					break
 				fi
 			;;
@@ -106,17 +108,17 @@ do
 			;;
 		esac
 	done
-	#row+=$cName:
+
 	echo "Choose The Type Of Column: "
 	select input in "Int" "String"
 		do
 			case $REPLY in
 				1)
-					row2+=(Int)
+					dataTypes+=(Int)
 					break
 				;;
 				2)
-					row2+=(String)
+					dataTypes+=(String)
 					break
 				;;
 				*)
@@ -125,14 +127,17 @@ do
 			esac
 		done
 done
+
 name=""
 type=""
-for val in "${row[@]}"; do
+for val in "${columnNames[@]}"; do
 	name+=$val:
 done
-for val in "${row2[@]}"; do
+
+for val in "${dataTypes[@]}"; do
 	type+=$val:
 done
+
 echo ${name::-1} >> $tName"_meta"
 echo ${type::-1} >> $tName"_meta"
 echo "$tName Created Successfully"

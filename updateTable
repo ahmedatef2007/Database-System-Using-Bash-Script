@@ -1,0 +1,60 @@
+#!/bin/bash
+
+update_data() {
+    if [[ -f $tName ]]; then
+        read -p "Enter the primary key value to update: " primaryKey
+        if grep -q "^$primaryKey:" "$tName"; then
+            echo "Updating data with primary key $primaryKey in $tName"
+            currentData=$(grep "^$primaryKey:" "$tName")
+            
+            IFS=':' read -ra currentValues <<< "$currentData"
+            columns=$(head -1 "$tName"_meta)
+            IFS=':' read -ra columnArray <<< "$columns"
+
+            for ((i=0; i<${#columnArray[@]}; i++)); do
+                read -p "Enter new value for ${columnArray[i]} [${currentValues[i]}]: " newValue
+                if [[ -n $newValue ]]; then
+                    currentValues[i]=$newValue
+                fi
+            done
+
+            newData=$(IFS=:; echo "${currentValues[*]}")
+            
+            # Validate that no duplicate primary key is allowed
+            newPrimaryKey=${currentValues[0]}
+            if [[ $(awk -F: -v pk="$newPrimaryKey" '$1 == pk' "$tName" | wc -l) -gt 1 ]]; then
+                echo "Error: Duplicate primary key $newPrimaryKey. Update aborted."
+            else
+                sed -i "s/^$primaryKey:.*/$newData/" "$tName"
+                echo "Data with primary key $primaryKey updated successfully in $tName"
+            fi
+        else
+            echo "No data found with primary key $primaryKey in $tName"
+        fi
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+while true
+do
+    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
+        echo "There Are No Tables Created"
+        break
+    else
+        echo "Available Tables:"
+        ls -p | grep -v / | grep -v '_meta'
+        read -p "Enter the name of the table to update (ESC to exit): " tName
+        if [[ $tName == $'\e' ]]; then
+            break
+        fi
+        if [[ -f $tName ]]; then
+            update_data
+        else
+            echo "There is no table with this name. Table name must be exact!"
+        fi
+    fi
+done
+
+. ../../connectDBMenu
+

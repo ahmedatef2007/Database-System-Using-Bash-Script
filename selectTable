@@ -1,0 +1,86 @@
+#!/bin/bash
+
+select_data_menu() {
+    PS3="Choose Option [1-4]: "
+    
+    options=("Select All" "Select Range" "Select Specific Row" "Exit")
+    
+    select option in "${options[@]}"
+    do
+        case $REPLY in
+            1)
+                select_all_data
+                ;;
+            2)
+                select_range_data
+                ;;
+            3)
+                select_specific_row
+                ;;
+            4)
+                echo "Exiting Data Selection Menu"
+                return
+                ;;
+            *)
+                echo "Invalid option. Please choose a valid option (1-4)."
+                ;;
+        esac
+    done
+}
+
+
+select_all_data() {
+    if [[ -f $tName ]]; then
+        echo "Selected all data from $tName"
+        echo "--------------------------------------------------------"
+        cat "$tName"
+        echo "--------------------------------------------------------"
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+
+select_range_data() {
+    if [[ -f $tName ]]; then
+        read -p "Enter start of range: " start
+        read -p "Enter end of range: " end
+        awk -F: -v start="$start" -v end="$end" '$1 >= start && $1 <= end' "$tName"
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+
+select_specific_row() {
+    if [[ -f $tName ]]; then
+        read -p "Enter the primary key value to select: " primaryKey
+        grep "^$primaryKey:" "$tName"
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+
+while true
+do
+    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
+        echo "There Are No Tables Created"
+        break
+    else
+        echo "Available Tables:"
+        ls -p | grep -v / | grep -v '_meta'
+        read -p "Enter the name of the table to select from (ESC to exit): " tName
+        if [[ $tName == $'\e' ]]; then
+            break
+        fi
+        if [[ -f $tName ]]; then
+            select_data_menu
+        else
+            echo "There is no table with this name. Table name must be exact!"
+        fi
+    fi
+done
+
+. ../../connectDBMenu
+

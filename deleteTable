@@ -1,0 +1,38 @@
+#!/bin/bash
+
+delete_data() {
+    if [[ -f $tName ]]; then
+        read -p "Enter the primary key value to delete: " primaryKey
+        if grep -q "^$primaryKey:" "$tName"; then
+            sed -i "/^$primaryKey:/d" "$tName"
+            echo "Data with primary key $primaryKey deleted successfully from $tName"
+        else
+            echo "No data found with primary key $primaryKey in $tName"
+        fi
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+while true
+do
+    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
+        echo "There Are No Tables Created"
+        break
+    else
+        echo "Available Tables:"
+        ls -p | grep -v / | grep -v '_meta'
+        read -p "Enter the name of the table to delete from (ESC to exit): " tName
+        if [[ $tName == $'\e' ]]; then
+            break
+        fi
+        if [[ -f $tName ]]; then
+            delete_data
+        else
+            echo "There is no table with this name. Table name must be exact!"
+        fi
+    fi
+done
+
+. ../../connectDBMenu
+
