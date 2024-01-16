@@ -1,9 +1,10 @@
 #!/bin/bash
+IFS=$' \t\n'
 
 select_data_menu() {
-    PS3="Choose Option [1-4]: "
+    PS3="Choose Option [1-7]: "
     
-    options=("Select All" "Select Range" "Select Specific Row" "Exit")
+    options=("Select All" "Select Range" "Select By Primary Key" "Select by Any Column" "Select Specific Columns" "Select Specific Columns Based On Condition" "Exit")
     
     select option in "${options[@]}"
     do
@@ -18,39 +19,103 @@ select_data_menu() {
                 select_specific_row
                 ;;
             4)
+                select_by_column_value
+                ;;
+            5)
+                select_specific_columns  # Added option for selecting specific columns
+                ;;
+            6)
+                select_specific_columns_based_on_condition
+                ;;
+	    7)
                 echo "Exiting Data Selection Menu"
                 return
                 ;;
             *)
-                echo "Invalid option. Please choose a valid option (1-4)."
+                echo "Invalid option. Please choose a valid option (1-6)."
                 ;;
         esac
     done
 }
 
+select_specific_columns() {
+    if [[ -f $tName ]]; then
+        echo "Available Columns:"
+        columns=$(head -1 "$tName"@meta | tr ':' '\n' | nl)
+        echo "$columns"
+
+        read -p "Enter the column numbers to select (comma-separated): " colNumbers
+
+        # Validate input by allowing integers only and disallowing special characters
+        valid=true
+        for colNumber in $(echo "$colNumbers" | tr ',' ' '); do
+            if [[ ! "$colNumber" =~ ^[0-9]+$ ]]; then
+                valid=false
+                break
+            fi
+
+            if (( colNumber <= 0 || colNumber > $(echo "$columns" | wc -l) )); then
+                valid=false
+                break
+            fi
+        done
+	
+        if $valid; then     
+            awk -F: -v colNumbers="$colNumbers" -v OFS=":" 'NR > 0 {
+                split(colNumbers, cols, ",");
+                for (i in cols) {
+                    printf "%s", $cols[i];
+                    if (i < length(cols)) printf OFS;
+                }
+                print "";
+            }' "$tName"
+        else
+            echo "Invalid column number(s). Please enter valid integer column number(s)."
+        fi
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+
+
+
 
 select_all_data() {
     if [[ -f $tName ]]; then
         echo "Selected all data from $tName"
-        echo "--------------------------------------------------------"
+        
+        cat $tName"@meta" | head -n 1
+        echo "---------------------"       
         cat "$tName"
-        echo "--------------------------------------------------------"
+        
     else
         echo "Table $tName does not exist."
     fi
 }
-
 
 select_range_data() {
     if [[ -f $tName ]]; then
-        read -p "Enter start of range: " start
+        
+	total_rows=$(wc -l < "$tName")
+        echo "Selected all data from $tName ($total_rows rows)"
+        
+	read -p "Enter start of range: " start
         read -p "Enter end of range: " end
-        awk -F: -v start="$start" -v end="$end" '$1 >= start && $1 <= end' "$tName"
+
+        total_rows=$(wc -l < "$tName")
+
+        if [[ $start -le $end && $end -le $total_rows && $start -gt 0 ]]; then
+ 	    cat $tName"@meta" | head -n 1
+            echo "---------------------"       
+            awk -v start="$start" -v end="$end" 'NR >= start && NR <= end' "$tName"
+        else
+            echo "Invalid range. Please enter a valid range."
+        fi
     else
         echo "Table $tName does not exist."
     fi
 }
-
 
 select_specific_row() {
     if [[ -f $tName ]]; then
@@ -61,26 +126,118 @@ select_specific_row() {
     fi
 }
 
+select_by_column_value() {
+    if [[ -f $tName ]]; then
+        echo "Available Columns:"
+        columns=$(head -1 "$tName"@meta | tr ':' '\n' | nl)
+        echo "$columns"
+        read -p "Enter the column number to search: " colNumber
+
+        if [[ $colNumber -ge 1 && $colNumber -le $(echo "$columns" | wc -l) ]]; then
+            read -p "Enter the value to search for: " searchValue
+
+            matching_rows=$(awk -F: -v colNumber="$colNumber" -v searchValue="$searchValue" '$colNumber == searchValue {count++} END {print count}' "$tName")
+
+            if [[ $matching_rows -eq 0 ]]; then
+                echo "No data Found."
+            else
+                awk -F: -v colNumber="$colNumber" -v searchValue="$searchValue" -v OFS=":" '$colNumber == searchValue' "$tName"
+            fi
+        else
+            echo "Invalid column number. Please enter a valid column number."
+        fi
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+select_specific_columns_based_on_condition() {
+    if [[ -f "$tName" && -f "$tName"@meta ]]; then
+        echo "Available Columns:"
+        columns=$(head -1 "$tName"@meta | tr ':' '\n' | nl)
+        echo "$columns"
+        
+        while true; do
+            read -p "Enter the column numbers to select (comma-separated): " colNumbers
+            if [[ "$colNumbers" =~ ^[0-9,]+$ ]]; then
+                IFS=',' read -ra selectedColumns <<< "$colNumbers"
+                break
+            else
+                echo "Invalid input. Please enter valid column numbers separated by commas."
+            fi
+        done
+
+        for colNumber in "${selectedColumns[@]}"; do
+            if [[ $colNumber -ge 1 && $colNumber -le $(echo "$columns" | wc -l) ]]; then
+                selectedColumnsIndexes["$colNumber"]=1
+            else
+                echo "Invalid column number $colNumber. Please enter a valid column number."
+                return
+            fi
+        done
+
+        read -p "Enter the column number for the condition: " conditionColumn
+        if [[ $conditionColumn -ge 1 && $conditionColumn -le $(echo "$columns" | wc -l) ]]; then
+            read -p "Enter the value for the condition: " conditionValue
+            print_selected_rows "$conditionColumn" "$conditionValue" "${selectedColumns[@]}"
+        else
+            echo "Invalid column number for the condition. Please enter a valid column number."
+        fi
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+
+print_selected_rows() {
+    local conditionColumn=$1
+    local conditionValue=$2
+    shift 2
+    local selectedColumns=("${@}")
+
+    awk -F: -v conditionColumn="$conditionColumn" -v conditionValue="$conditionValue" -v OFS=":" -v selectedColumns="${selectedColumns[*]}" '
+    {
+        split(selectedColumns, items, " ");
+        line = "";
+        if ($conditionColumn == conditionValue) {
+            for (i = 1; i <= length(items); i++) {
+                line = line $items[i] ":";
+            }
+            line = substr(line, 1, length(line)-1);  # Remove the trailing colon
+            if (line != "") {
+                print line;
+            }
+        }
+    }
+' "$tName"
+
+}
+
+
+
+
 
 while true
 do
-    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
-        echo "There Are No Tables Created"
+    tables=($(ls -p | grep -v / | grep -v '@meta'))
+
+    if [[ ${#tables[@]} -eq 0 ]]; then
+        echo "No tables"
         break
     else
+	tables+=("Exit")
+	PS3="Enter the number of the database to select from (or ${#tables[@]} to exit): "
         echo "Available Tables:"
-        ls -p | grep -v / | grep -v '_meta'
-        read -p "Enter the name of the table to select from (ESC to exit): " tName
-        if [[ $tName == $'\e' ]]; then
-            break
-        fi
-        if [[ -f $tName ]]; then
-            select_data_menu
-        else
-            echo "There is no table with this name. Table name must be exact!"
-        fi
+        select tName in "${tables[@]}"; do
+            if [[ $tName == "Exit" ]]; then
+                . ../../connectDBMenu
+            elif [[ -f $tName ]]; then
+                select_data_menu
+                break
+            else
+                echo "Invalid selection. Please choose a valid table or enter 'ESC' to exit."
+            fi
+        done
     fi
 done
-
-. ../../connectDBMenu
 

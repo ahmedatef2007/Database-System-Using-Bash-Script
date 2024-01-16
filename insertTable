@@ -1,55 +1,70 @@
 #!/bin/bash
 
-IFS=":"
+
 data=""
-while true
-do
-	if [[ `ls -p | grep -v / | grep -v '_meta' | wc -l` -eq 0 ]]; then
-		echo "There Are No Tables Created"
-		break
-	else	
-		echo Available Tables:
-		ls -p | grep -v / | grep -v '_meta'
-		read -p "Enter Name Of Table To Insert In or ESC: " tName
-		if [[ $tName == $'\e' ]]; then
-			break
-		fi
-		if [[ -f $tName ]]; then
-			col=$(head -1 "$tName"_meta)
-			types=$(tail -1 "$tName"_meta)
-			read -ra col_array <<< "$col"
-			read -ra types_array <<< "$types"
-			for ((i=0; i<${#col_array[*]}; i++)); do
-				read -p "Enter Value For Column Named ${col_array[i]}: " value
-				if [[ ${types_array[i]} == "Int" ]]; then
-					if [[ $value =~ ^[0-9]+$ ]]; then
-						if [[ $i -eq 0 && `(awk -F: '{print $1}' $tName) | grep -c $value` -gt 0 ]]; then
-							echo "Error: Cannot Have Duplicate Primary Key"
-							((i--))
-						else
-							data+=$value:
-						fi
-					else
-					    	echo "Invalid input. Please enter a value containing only numbers."
-						((i--))
-					fi
-				elif [[ ${types_array[i]} == "String" ]]; then
-					if [[ $i -eq 0 && `(awk -F: '{print $1}' $tName) | grep -c $value` -gt 0 ]]; then
-						echo "Error: Cannot Have Duplicate Primary Key"
-						((i--))
-					else
-						data+=$value:
-					fi
-				fi
-			done
-			IFS="\n"
-		else
-			echo There Is No Table With This Name, Table Name Must Be Exactly!
-		fi
-		echo ${data::-1} >> $tName
-		echo ${data::-1} Data Inserted Successfully
-		sleep 2
-		. ../../connectDBMenu
-		
-	fi
+
+while true; do
+    if [[ $(ls -p | grep -v / | grep -v '@meta' | wc -l) -eq 0 ]]; then
+        echo "There Are No Tables Created"
+        break
+    else
+        echo "Available Tables:"
+        tables=($(ls -p | grep -v / | grep -v '@meta'))
+        tables+=("Exit")
+	PS3="Enter the number of the table to insert in (or ${#tables[@]} to exit): "
+        select tName in "${tables[@]}"; do
+            if [[ $tName == "Exit" ]]; then
+                . ../../connectDBMenu
+            elif [[ -f $tName ]]; then
+		IFS=":"
+                col=$(head -1 "$tName"@meta)
+                types=$(tail -1 "$tName"@meta)
+                read -ra col_array <<< "$col"
+                read -ra types_array <<< "$types"
+
+                for ((i=0; i<${#col_array[*]}; i++)); do
+                    read -p "Enter Value For Column Named ${col_array[i]}: " value
+
+                    if [[ ${types_array[i]} == "Int" ]]; then
+                        if [[ $value =~ ^[0-9]+$ ]]; then
+                            if [[ $i -eq 0 && $(awk -F: '{print $1}' "$tName" | grep -Fx -c "$value") -gt 0 ]]; then
+                                echo "Error: Cannot Have Duplicate Primary Key"
+                                ((i--))
+			    elif [[ -z $value ]]; then
+                                echo "Error: Primary key cannot be empty."
+                            else
+                                data+="$value:"
+                            fi
+			elif [[ $i -gt 0 && -z $value ]]; then
+				data+='NULL:'
+                        else
+                            echo "Invalid input. Please enter a value containing only numbers."
+                            ((i--))
+                        fi
+                    elif [[ ${types_array[i]} == "String" ]]; then
+                        if [[ $i -eq 0 && $(awk -F: '{print $1}' "$tName" | grep -Fx -c "$value") -gt 0 ]]; then
+                            echo "Error: Cannot Have Duplicate Primary Key"
+                            ((i--))
+			elif [[ $i -eq 0 && -z $value ]]; then
+                            echo "Error: Primary key cannot be empty."
+			    ((i--))
+			elif [[ $i -gt 0 && -z $value ]]; then
+				data+='NULL:'
+                        else
+                            data+="$value:"
+                        fi
+                    fi
+                done
+
+                IFS=$' \t\n'
+                echo "${data::-1}" >> "$tName"
+                echo "${data::-1} Data Inserted Successfully"
+                sleep 2
+                . ../../connectDBMenu
+            else
+                echo "Invalid selection. Please choose a valid table or enter 'ESC' to exit."
+            fi
+        done
+    fi
 done
+

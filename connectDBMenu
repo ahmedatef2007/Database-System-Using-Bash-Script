@@ -18,10 +18,10 @@ do
 			. ../../selectTable
 		;;
 		5)
-			 ../../deleteTable
+			. ../../deleteTable
 		;;
 		6)
-			../../updateTable
+			. ../../updateTable
 		;;
 		7)
 			. ../../listTables

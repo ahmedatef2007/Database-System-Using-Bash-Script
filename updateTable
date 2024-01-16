@@ -1,60 +1,182 @@
 #!/bin/bash
 
-update_data() {
-    if [[ -f $tName ]]; then
-        read -p "Enter the primary key value to update: " primaryKey
-        if grep -q "^$primaryKey:" "$tName"; then
-            echo "Updating data with primary key $primaryKey in $tName"
-            currentData=$(grep "^$primaryKey:" "$tName")
+update_data_menu() {
+    PS3="Choose Option [1-2]: "
+    
+    options=("Update By Column Value" "Exit")
+    
+    select option in "${options[@]}"
+    do
+        case $REPLY in
             
-            IFS=':' read -ra currentValues <<< "$currentData"
-            columns=$(head -1 "$tName"_meta)
-            IFS=':' read -ra columnArray <<< "$columns"
+            1)
+                update_by_column_value
+                ;;
+            2)
+                echo "Exiting Data Update Menu"
+                return
+                ;;
+            *)
+                echo "Invalid option. Please choose a valid option (1-3)."
+                ;;
+        esac
+    done
+}
 
-            for ((i=0; i<${#columnArray[@]}; i++)); do
-                read -p "Enter new value for ${columnArray[i]} [${currentValues[i]}]: " newValue
-                if [[ -n $newValue ]]; then
-                    currentValues[i]=$newValue
-                fi
+
+update_all_rows() {
+    conditionColumn=$1
+    conditionValue=$2
+
+    matching_rows=$(awk -F: -v colNumber="$conditionColumn" -v searchValue="$conditionValue" '$colNumber == searchValue {print $0}' "$tName")
+
+    if [[ -z "$matching_rows" ]]; then
+        echo "No data found for the specified condition."
+    else
+        echo "Matching Rows:"
+        echo "$matching_rows"
+
+        IFS=$'\n'
+        matching_rows_count=$(echo "$matching_rows" | wc -l)
+
+        if [[ $matching_rows_count -gt 1 && " ${selectedColumns[@]} " =~ " 1 " ]]; then
+            echo "Aborting update: More than one matching row and updating the primary key."
+	    columnsToUpdate=()
+        else
+            for row in $matching_rows; do
+                IFS=':' read -ra rowValues <<< "$row"
+                primaryKey=${rowValues[0]}
+                update_row "$primaryKey"
             done
 
-            newData=$(IFS=:; echo "${currentValues[*]}")
-            
-            # Validate that no duplicate primary key is allowed
-            newPrimaryKey=${currentValues[0]}
-            if [[ $(awk -F: -v pk="$newPrimaryKey" '$1 == pk' "$tName" | wc -l) -gt 1 ]]; then
-                echo "Error: Duplicate primary key $newPrimaryKey. Update aborted."
-            else
-                sed -i "s/^$primaryKey:.*/$newData/" "$tName"
-                echo "Data with primary key $primaryKey updated successfully in $tName"
+            echo "Matching rows updated successfully in $tName"
+        fi
+    fi
+}
+
+read_data_types() {
+    local tName=$1
+    local types_line=$(sed -n '2p' "$tName"@meta)
+    echo "$types_line"
+}
+
+# Add a function to validate data types
+validate_data_type() {
+    local colNumber=$1
+    local newValue=$2
+    local types_line=$(read_data_types "$tName")
+    IFS=':' read -ra types_array <<< "$types_line"
+    
+    case ${types_array[colNumber-1]} in
+        "Int")
+            if ! [[ "$newValue" =~ ^[0-9]+$ ]]; then
+                echo "Invalid input. Column $colNumber accepts only integer values."
+                return 1
             fi
+            ;;
+        "String")
+            # Add additional checks for String data type if needed
+            ;;
+        # Add more cases for other data types as needed
+        *)
+            echo "Unknown data type for column $colNumber."
+            return 1
+            ;;
+    esac
+}
+
+update_by_column_value() {
+    if [[ -f $tName ]]; then
+        echo "Available Columns:"
+        columns=$(head -1 "$tName"@meta | tr ':' '\n' | nl)
+        echo "$columns"
+        
+        read -p "Enter the column numbers to update (comma-separated): " colNumbers
+        IFS=',' read -ra selectedColumns <<< "$colNumbers"
+
+        for colNumber in "${selectedColumns[@]}"; do
+            if [[ $colNumber -ge 1 && $colNumber -le $(echo "$columns" | wc -l) ]]; then
+                # If updating the primary key column, check for duplicates
+                if [[ $colNumber -eq 1 ]]; then
+                    read -p "Enter new value for column $colNumber: " newValue
+                    if grep -q "^$newValue:" "$tName"; then
+                        echo "Duplicate primary key value. Update aborted."
+                        selectedColumns=()
+                        return
+                    else
+                        validate_data_type "$colNumber" "$newValue" || return
+                        columnsToUpdate["$colNumber"]=$newValue
+                    fi
+                else
+                    read -p "Enter new value for column $colNumber: " newValue
+                    if [[ -n $newValue ]]; then
+                        validate_data_type "$colNumber" "$newValue" || return
+                        columnsToUpdate["$colNumber"]=$newValue
+                    fi
+                fi
+            else
+                echo "Invalid column number $colNumber. Please enter a valid column number."
+                return
+            fi
+        done
+
+        read -p "Enter the column number for the condition: " conditionColumn
+        if [[ $conditionColumn -ge 1 && $conditionColumn -le $(echo "$columns" | wc -l) ]]; then
+            read -p "Enter the value for the condition: " conditionValue
+            update_all_rows "$conditionColumn" "$conditionValue"
         else
-            echo "No data found with primary key $primaryKey in $tName"
+            echo "Invalid column number for the condition. Please enter a valid column number."
         fi
     else
         echo "Table $tName does not exist."
     fi
 }
 
-while true
-do
-    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
-        echo "There Are No Tables Created"
+
+update_row() {
+    primaryKey=$1
+    echo "Updating data with primary key $primaryKey in $tName"
+    currentData=$(grep "^$primaryKey:" "$tName")
+
+    IFS=':' read -ra currentValues <<< "$currentData"
+
+    for colNumber in "${!columnsToUpdate[@]}"; do
+        currentValues[$((colNumber-1))]=${columnsToUpdate[$colNumber]}
+    done
+
+    IFS=':'
+    newData="${currentValues[*]}"
+
+    sed -i "s/^$primaryKey:.*/$newData/" "$tName"
+    echo "Data with primary key $primaryKey updated successfully in $tName"
+    IFS=$' \t\n'
+
+}
+
+
+
+
+
+while true; do
+    tables=($(ls -p | grep -v / | grep -v '@meta'))
+
+    if [[ ${#tables[@]} -eq 0 ]]; then
+        echo "No tables"
         break
     else
         echo "Available Tables:"
-        ls -p | grep -v / | grep -v '_meta'
-        read -p "Enter the name of the table to update (ESC to exit): " tName
-        if [[ $tName == $'\e' ]]; then
-            break
-        fi
-        if [[ -f $tName ]]; then
-            update_data
-        else
-            echo "There is no table with this name. Table name must be exact!"
-        fi
+	tables+=("Exit")
+	PS3="Enter the number of the table to delete from (or ${#tables[@]} to exit): "
+        select tName in "${tables[@]}"; do
+            if [[ $tName == "Exit" ]]; then
+                . ../../connectDBMenu
+            elif [[ -f $tName ]]; then
+                declare -A columnsToUpdate
+                update_data_menu
+                break
+            else
+                echo "Invalid selection. Please choose a valid table or enter 'ESC' to exit."
+            fi
+        done
     fi
 done
-
-. ../../connectDBMenu
-

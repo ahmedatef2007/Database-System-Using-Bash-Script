@@ -1,30 +1,47 @@
 #!/bin/bash
 
-while true
-do
-	if [[ `ls | wc -l` -eq 0 ]]; then
-		echo "There Are No Databases Created"
-		break
-	else	
-		echo Available Databases:
-		ls -F | grep / | sed 's|/$||'
-		read -p "Enter Name Of Database To Drop or ESC: " dbName
-		if [[ $dbName == $'\e' ]]; then
-			break
-		fi
-		if [[ -d $dbName ]]; then
-			read -p "Are You Sure You Want to Drop Database y/n: " conf
-			if [[ $conf == y || $conf == Y ]]; then
-				rm -r $dbName		
-				echo $dbName Dropped Successfully
-				break
-			elif [[ $conf == n || $conf == N ]]; then
-				continue
-			else
-				echo Invalid Choice
-			fi
-		else
-			echo There Is No Database With This Name, Database Name Must Be Exactly!
-		fi
-	fi
+while true; do
+    databases=($(ls -F | grep / | sed 's|/$||'))
+
+    if [[ ${#databases[@]} -eq 0 ]]; then
+        echo "There Are No Databases Created"
+	PS3="Choose Option [1-5]: "
+        break
+    else
+        echo "Available Databases:"
+        PS3="Enter the number of the database to drop (or ${#options[@]} to exit): "
+        options=("${databases[@]}" "Exit")
+        select selectedDbName in "${options[@]}"; do
+            if [[ $selectedDbName == "Exit" ]]; then
+                cd ..
+                . ./main
+            elif [[ -z $selectedDbName ]]; then
+                echo "Invalid selection. Please choose a valid database number or 'Exit' to exit."
+                continue
+            fi
+
+            read -p "Are You Sure You Want to Drop Database $selectedDbName? (y/n): " conf
+            case $conf in
+                [Yy])
+                    rm -r "$selectedDbName"
+                    echo "$selectedDbName Dropped Successfully"
+
+                    # Update the options array after successful drop
+                    databases=($(ls -F | grep / | sed 's|/$||'))
+                    options=("${databases[@]}" "Exit")
+
+                    
+                    PS3="Enter the number of the database to drop (or ${#options[@]} to exit): "
+                    break
+                    ;;
+                [Nn])
+                    continue
+                    ;;
+                *)
+                    echo "Invalid Choice"
+                    ;;
+            esac
+        done
+    fi
 done
+

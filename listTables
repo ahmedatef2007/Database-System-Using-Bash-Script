@@ -1,7 +1,7 @@
 #!/bin/bash
-if [[ `ls -p | grep -v / | grep -v '_meta' | wc -l` -eq 0 ]]; then
+if [[ `ls -p | grep -v / | grep -v '@meta' | wc -l` -eq 0 ]]; then
 	echo "There Are No Tables Created"
 else
 	echo Available Tables:
-	ls -p | grep -v / | grep -v '_meta'
+	ls -p | grep -v / | grep -v '@meta'
 fi

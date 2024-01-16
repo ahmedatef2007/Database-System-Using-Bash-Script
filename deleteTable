@@ -2,37 +2,102 @@
 
 delete_data() {
     if [[ -f $tName ]]; then
-        read -p "Enter the primary key value to delete: " primaryKey
-        if grep -q "^$primaryKey:" "$tName"; then
-            sed -i "/^$primaryKey:/d" "$tName"
-            echo "Data with primary key $primaryKey deleted successfully from $tName"
+        PS3="Choose deletion method [1-3]: "
+        options=("By Primary Key" "By Column Value" "Exit")
+
+        select option in "${options[@]}"
+        do
+            case $REPLY in
+                1)
+                    delete_by_primary_key
+                    ;;
+                2)
+                    delete_by_column_value
+                    ;;
+                3)
+                    echo "Exiting Delete Menu"
+                    return
+                    ;;
+                *)
+                    echo "Invalid option. Please choose a valid option (1-3)."
+                    ;;
+            esac
+        done
+    else
+        echo "Table $tName does not exist."
+    fi
+}
+
+delete_by_primary_key() {
+    read -p "Enter the primary key value to delete: " primaryKey
+    if grep -q "^$primaryKey:" "$tName"; then
+        sed -i "/^$primaryKey:/d" "$tName"
+        echo "Data with primary key $primaryKey deleted successfully from $tName"
+    else
+        echo "No data found with primary key $primaryKey in $tName"
+    fi
+}
+delete_by_column_value() {
+    if [[ -f $tName ]]; then
+        echo "Available Columns:"
+        columns=$(head -1 "$tName"@meta | tr ':' '\n' | nl)
+        echo "$columns"
+        read -p "Enter the column number to delete: " colNumber
+
+        if [[ $colNumber -ge 1 && $colNumber -le $(echo "$columns" | wc -l) ]]; then
+            read -p "Enter the value to delete for: " searchValue
+
+            matching_rows=$(awk -F: -v colNumber="$colNumber" -v searchValue="$searchValue" '$colNumber == searchValue {count++} END {print count}' "$tName")
+
+            if [[ $matching_rows -eq 0 ]]; then
+                echo "No data Found."
+            else
+                matching_primary_keys=$(awk -F: -v colNumber="$colNumber" -v searchValue="$searchValue" -v OFS=":" '$colNumber == searchValue {print $1}' "$tName")
+
+                echo "Matching Rows:"
+                echo "$matching_primary_keys"
+
+                read -p "Do you want to delete these rows? (yes/no): " deleteChoice
+
+                if [[ $deleteChoice == "yes" ]]; then
+                    while IFS= read -r primary_key; do
+                    	sed -i "/^$primary_key:/d" "$tName"
+               	    done <<< "$matching_primary_keys"
+                    echo "Matching rows deleted successfully from $tName"
+                else
+                    echo "Deletion aborted."
+                fi
+            fi
         else
-            echo "No data found with primary key $primaryKey in $tName"
+            echo "Invalid column number. Please enter a valid column number."
         fi
     else
         echo "Table $tName does not exist."
     fi
 }
 
-while true
-do
-    if [[ $(ls -p | grep -v / | grep -v '_meta' | wc -l) -eq 0 ]]; then
+
+while true; do
+    tables=($(ls -p | grep -v / | grep -v '@meta'))
+
+    if [[ ${#tables[@]} -eq 0 ]]; then
         echo "There Are No Tables Created"
         break
     else
         echo "Available Tables:"
-        ls -p | grep -v / | grep -v '_meta'
-        read -p "Enter the name of the table to delete from (ESC to exit): " tName
-        if [[ $tName == $'\e' ]]; then
-            break
-        fi
-        if [[ -f $tName ]]; then
-            delete_data
-        else
-            echo "There is no table with this name. Table name must be exact!"
-        fi
+	tables+=("Exit")
+	PS3="Enter the number of the table to drop (or ${#tables[@]} to exit): "
+        select tName in "${tables[@]}"; do
+            if [[ $tName == "Exit" ]]; then
+                . ../../connectDBMenu
+            elif [[ -f $tName ]]; then
+                delete_data
+                break
+            else
+                echo "Invalid selection. Please choose a valid table or enter 'ESC' to exit."
+            fi
+        done
     fi
 done
 
-. ../../connectDBMenu
 

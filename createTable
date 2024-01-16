@@ -14,29 +14,19 @@ do
 			echo Table Name Cannot Start With Numbers.
 			continue
 		;;
-		*[!a-zA-Z0-9_]*)
+		*[^a-zA-Z0-9_[:space:]]*)
 			echo Table Name Cannot Have Special Characters.
 		;;
-		*[[:space:]]*)
-				tName=$(echo $tName | sed 's/ /_/g')
-				if [[ -f $tName ]]; then
-					echo $tName Already Exist.
-					continue
-				else
-					touch $tName
-					touch $tName"_meta"
-					break
-				fi	
-		;;
 		+([a-zA-Z_]*))
-			if [[ -f $tName ]]; then
-					echo $tName Already Exist.
-					continue
-				else
-					touch $tName
-					touch $tName"_meta"
-					break
-				fi	
+			if [[ -f "$tName" ]]; then
+				echo "$tName Already Exists."
+				continue
+			else
+				tName=$(echo "$tName" | tr ' ' '_')
+				touch "$tName"
+				touch "${tName}@meta"
+				break
+			fi
 		;;
 		*)
 			echo Invalid Name
@@ -51,7 +41,7 @@ do
 	if [[ $numColm =~ ^[0-9]+$ && $numColm -gt 0 ]]; then
 		break
 	else
-		echo Please Enter Numbers Only.
+		echo "Please Enter a Valid Positive Number."
 	fi
 done
 
@@ -62,84 +52,69 @@ echo First Column Is Primary Key
 
 for((i=1; i <= $numColm; i++))
 do
-	while true
-	do
-		flag=0
-		read -p "Enter Name Of Column Number $i: " cName
-		case $cName in
-			[0-9]*)
-				echo Column Name Cannot Start With Numbers.
-				continue
-			;;
-			*[!a-zA-Z0-9_]*)
-				echo Column Name Cannot Have Special Characters.
-			;;
-			*[[:space:]]*)
-					cName=$(echo $cName | sed 's/ /_/g')
-					for val in "${columnNames[@]}"; do
-					    if [[ "$cName" == "$val" ]]; then
-						((flag++))
-					    fi
-					done
-					if [[ $flag -gt 0 ]]; then
-						echo You Cannot Enter The Same Column Name Twice.
-						continue
-					else
-						columnNames+=("$cName")
-						break
-					fi
-			;;
-			+([a-zA-Z_]*))
-				for val in "${columnNames[@]}"; do
-					if [[ $cName == $val ]]; then
-						((flag++))
-					fi
-				done
-				if [[ $flag -gt 0 ]]; then
-					echo You Cannot Enter The Same Column Name Twice.
-					continue
-				else
-					columnNames+=("$cName")
-					break
-				fi
-			;;
-			*)
-				echo Invalid Name
-			;;
-		esac
-	done
+    while true
+    do
+        flag=0
+        read -r -p "Enter Name Of Column Number $i: " cName
+        # Replace spaces with underscores
+        cName=$(echo "$cName" | tr ' ' '_')
+        case $cName in
+            [0-9]*)
+                echo Column Name Cannot Start With Numbers.
+                continue
+            ;;
+            *[^a-zA-Z0-9_[:space:]]*)
+                echo Column Name Cannot Have Special Characters.
+            ;;
+            +([a-zA-Z_]*))
+                for val in "${columnNames[@]}"; do
+                    if [[ $cName == $val ]]; then
+                        ((flag++))
+                    fi
+                done
+                if [[ $flag -gt 0 ]]; then
+                    echo You Cannot Enter The Same Column Name Twice.
+                    continue
+                else
+                    columnNames+=("$cName")
+                    break
+                fi
+            ;;
+            *)
+                echo Invalid Name
+            ;;
+        esac
+    done
 
-	echo "Choose The Type Of Column: "
-	select input in "Int" "String"
-		do
-			case $REPLY in
-				1)
-					dataTypes+=(Int)
-					break
-				;;
-				2)
-					dataTypes+=(String)
-					break
-				;;
-				*)
-					echo Wrong input
-				;;
-			esac
-		done
+    echo "Choose The Type Of Column: "
+    select input in "Int" "String"
+    do
+        case $REPLY in
+            1)
+                dataTypes+=(Int)
+                break
+            ;;
+            2)
+                dataTypes+=(String)
+                break
+            ;;
+            *)
+                echo Wrong input
+            ;;
+        esac
+    done
 done
+
 
 name=""
 type=""
-for val in "${columnNames[@]}"; do
-	name+=$val:
+for ((i=0; i<${#columnNames[@]}; i++)); do
+	name+="${columnNames[i]}:"
+	type+="${dataTypes[i]}:"
 done
 
-for val in "${dataTypes[@]}"; do
-	type+=$val:
-done
-
-echo ${name::-1} >> $tName"_meta"
-echo ${type::-1} >> $tName"_meta"
+echo ${name::-1} >> $tName"@meta"
+echo ${type::-1} >> $tName"@meta"
 echo "$tName Created Successfully"
 sleep 2
 . ../../connectDBMenu

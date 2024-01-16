@@ -5,28 +5,21 @@ while true
 do
 	read -p "Enter Database Name Or ESC: " dbName
 	if [[ $dbName == $'\e' ]]; then
-		break
+		cd ..
+                . ./main
 	else
 		case $dbName in
 		[0-9]*)
 			echo Database Name Cannot Start With Numbers.
 			continue
 		;;
-		*[!a-zA-Z0-9_]*)
+		*[^a-zA-Z0-9_[:space:]]*)
 			echo Database Name Cannot Have Special Characters.
 		;;
-		*[[:space:]]*)
-				dbName=$(echo $dbName | sed 's/ /_/g')
-				if [[ -d $dbName ]]; then
-					echo Database Already Exist.
-					continue
-				else
-					mkdir $dbName
-					echo $dbName Created Successfully.
-					break
-				fi	
-		;;
 		+([a-zA-Z_]*))
+			if [[ $dbName == *" "* ]]; then
+				dbName=$(echo "$dbName" | sed 's/ /_/g')
+			    fi
 			if [[ -d $dbName ]]; then
 					echo Database Already Exist.
 					continue
@@ -42,3 +35,4 @@ do
 		esac
 	fi
 done
+

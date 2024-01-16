@@ -1,30 +1,60 @@
 #!/bin/bash
+IFS=$' \t\n'
 
-while true
-do
-	if [[ `ls -p | grep -v / | grep -v '_meta' | wc -l` -eq 0 ]]; then
-		echo "There Are No Tables Created"
-		break
-	else	
-		echo Available Tables:
-		ls -p | grep -v / | grep -v '_meta'
-		read -p "Enter Name Of Table To Drop or ESC: " tName
-		if [[ $tName == $'\e' ]]; then
-			break
-		fi
-		if [[ -f $tName ]]; then
-			read -p "Are You Sure You Want to Drop Database y/n: " conf
-			if [[ $conf == y || $conf == Y ]]; then
-				rm $tName $tName"_meta"
-				echo $tName Dropped Successfully
-				break
-			elif [[ $conf == n || $conf == N ]]; then
-				continue
-			else
-				echo Invalid Choice
-			fi
-		else
-			echo There Is No Table With This Name, Table Name Must Be Exactly!
-		fi
-	fi
+while true; do
+    table_count=$(ls -p | grep -v / | grep -v '@meta' | wc -l)
+
+    if [[ $table_count -eq 0 ]]; then
+        echo "There Are No Tables Created"
+	PS3="Choose Option [1-8]: "
+        break
+    else
+        echo "Available Tables:"
+        PS3="Enter the number of the table to drop (or ${#optionsDropDB[@]} to exit): "
+        optionsDropDB=($(ls -p | grep -v / | grep -v '@meta'))
+        optionsDropDB+=("Exit")
+
+        case $PS3 in
+            *to\ exit:*) ;;
+            *)
+                PS3="Enter the number of the table to drop (or ${#optionsDropDB[@]} to exit): "
+                ;;
+        esac
+
+        select tName in "${optionsDropDB[@]}"; do
+            if [[ $REPLY -eq ${#optionsDropDB[@]} ]]; then
+                . ../../connectDBMenu
+            elif [[ -z $tName ]]; then
+                echo "Invalid selection. Please choose a valid table number or 'Exit' to exit."
+                continue
+            fi
+
+            if [[ $tName == "Exit" ]]; then
+                . ../../connectDBMenu
+            fi
+
+            read -p "Are You Sure You Want to Drop Table '$tName'? (y/n): " conf
+            case $conf in
+                [Yy])
+                    rm "$tName" "$tName"@meta
+                    echo "$tName Dropped Successfully"
+
+                    # Update the options array after successful drop
+                    optionsDropDB=($(ls -p | grep -v / | grep -v '@meta'))
+                    optionsDropDB+=("Exit")
+
+                    
+                    PS3="Enter the number of the table to drop (or ${#optionsDropDB[@]} to exit): "
+                    break
+                    ;;
+                [Nn])
+                    continue
+                    ;;
+                *)
+                    echo "Invalid Choice"
+                    ;;
+            esac
+        done
+    fi
 done
+

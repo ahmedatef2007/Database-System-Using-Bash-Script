@@ -1,20 +1,28 @@
 #!/bin/bash
-	if [[ `ls | wc -l` -eq 0 ]]; then
-		echo "There Are No Databases Created"
-		
-	else	
-		echo Available Databases:
-		ls -F | grep / | sed 's|/$||'
-		read -p "Enter Name Of Database To Connect or ESC: " dbName
-		if [[ $dbName == $'\e' ]]; then
-			break
-		fi
-		if [[ -d $dbName ]]; then
-			cd $dbName
-			. ../../connectDBMenu
-			
-		else
-			echo There Is No Database With This Name, Database Name Must Be Exactly!
-		fi
-	fi
+
+if [[ $(ls | wc -l) -eq 0 ]]; then
+    echo "There Are No Databases Created"
+else
+    echo "Available Databases:"
+    options=($(ls -F | grep / | sed 's|/$||') "Exit")
+    PS3="Enter the number of the database to connect (or ${#options[@]} to exit): "
+    
+    select dbName in "${options[@]}"; do
+        if [[ $dbName == "Exit" ]]; then
+            cd ..
+	    . ./main
+        elif [[ -z $dbName ]]; then
+            echo "Invalid selection. Please choose a valid database number or 'Exit' to exit."
+            continue
+        fi
+
+        if [[ -d $dbName ]]; then
+            cd "$dbName"
+            . ../../connectDBMenu
+            
+        else
+            echo "There Is No Database With This Name, Database Name Must Be Exactly!"
+        fi
+    done
+fi
 
